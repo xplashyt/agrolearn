@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  body {
+    /* Grano de papel costal: una trama de puntos muy tenue, no una textura de imagen. */
+    background-image: radial-gradient(#12351f0f 1px, transparent 1px);
+    background-size: 4px 4px;
+  }
+
+  ::selection {
+    background: #efb63c;
+    color: #12351f;
+  }
+
+  :focus-visible {
+    outline: 2px solid #c8402a;
+    outline-offset: 2px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display), "Arial Narrow", sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 0.92;
+    text-transform: uppercase;
+  }
+}
+
+@layer components {
+  /* Borde superior rasgado del sobre de semillas. */
+  .rasgado {
+    /* Cuña de 90° con el vértice arriba: deja dientes de 8 px en el borde superior. */
+    -webkit-mask-image: conic-gradient(from 135deg at 50% 0, #000 0 90deg, #0000 0);
+    mask-image: conic-gradient(from 135deg at 50% 0, #000 0 90deg, #0000 0);
+    -webkit-mask-size: 16px 100%;
+    mask-size: 16px 100%;
+    -webkit-mask-repeat: repeat-x;
+    mask-repeat: repeat-x;
+  }
+
+  /* Costura de la solapa: la línea punteada que trae impresa el sobre. */
+  .costura {
+    background-image: repeating-linear-gradient(
+      to right,
+      currentColor 0 6px,
+      transparent 6px 12px
+    );
+    height: 1px;
+  }
+
+  .dato {
+    font-family: var(--font-mono), monospace;
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+}
+
+@keyframes sello-cae {
+  from {
+    opacity: 0;
+    transform: rotate(-14deg) scale(1.5);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-7deg) scale(1);
+  }
+}
+
+@keyframes sobre-entra {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes germina {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.anim-sello {
+  animation: sello-cae 0.5s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+
+.anim-sobre {
+  animation: sobre-entra 0.45s ease-out both;
+}
+
+.anim-germina {
+  transform-origin: bottom;
+  animation: germina 0.7s 0.2s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-sello,
+  .anim-sobre,
+  .anim-germina {
+    animation: none;
+  }
+  .anim-sello {
+    transform: rotate(-7deg);
+  }
+}
