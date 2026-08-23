@@ -18,7 +18,7 @@ export const PLANS: Plan[] = [
   {
     id: "patio-inicio",
     name: "Primeras cosechas",
-    priceCOP: 48900,
+    priceCOP: 2000,
     modules: 4,
     hours: "2 h 30",
     crops: 8,
@@ -56,7 +56,7 @@ export const PLANS: Plan[] = [
   {
     id: "patio-maestro",
     name: "Huerta todo el año",
-    priceCOP: 89900,
+    priceCOP: 494900,
     modules: 14,
     hours: "11 h",
     crops: 30,
