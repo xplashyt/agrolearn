@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buildReference } from "@/lib/orders";
+import { classifyDeclineReason } from "@/lib/payment-errors";
 import { formatCOP, type Plan } from "@/lib/plans";
 import {
   digitsOnly,
@@ -91,7 +92,8 @@ export function CheckoutPanel({ plan, onClose }: Props) {
           return;
         }
         if (data.status && ["DECLINED", "VOIDED", "ERROR"].includes(data.status)) {
-          setMensaje(data.statusMessage ?? null);
+          const clasificado = classifyDeclineReason(data.statusMessage);
+          setMensaje(`${clasificado.message} ${clasificado.hint ?? ""}`.trim());
           setFase("rechazado");
           return;
         }
@@ -134,23 +136,28 @@ export function CheckoutPanel({ plan, onClose }: Props) {
     setError(null);
     setFase("procesando");
 
-    let cardToken: string | undefined;
-    if (metodo === "CARD") {
-      const tokenizado = await tokenizeCard({
-        number: numero,
-        expiry: vence,
-        cvc,
-        holder: nombre,
-      });
-      if (!tokenizado.ok) {
-        setError(tokenizado.messages.join(" "));
-        setFase("form");
-        return;
-      }
-      cardToken = tokenizado.token;
-    }
-
+    // Todo el intento de pago va en UN solo try/catch: antes, tokenizeCard()
+    // se llamaba afuera, y si lanzaba (red caída, respuesta bloqueada por un
+    // WAF...) la excepción quedaba sin atrapar y el panel se quedaba
+    // congelado en "Procesando el pago" para siempre, sin error ni forma de
+    // reintentar.
     try {
+      let cardToken: string | undefined;
+      if (metodo === "CARD") {
+        const tokenizado = await tokenizeCard({
+          number: numero,
+          expiry: vence,
+          cvc,
+          holder: nombre,
+        });
+        if (!tokenizado.ok) {
+          setError(tokenizado.messages.join(" "));
+          setFase("form");
+          return;
+        }
+        cardToken = tokenizado.token;
+      }
+
       const res = await fetch("/api/wompi/pay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -166,7 +173,12 @@ export function CheckoutPanel({ plan, onClose }: Props) {
         }),
       });
 
-      const data = (await res.json()) as { id?: string; status?: string; error?: string };
+      const data = (await res.json()) as {
+        id?: string;
+        status?: string;
+        statusMessage?: string | null;
+        error?: string;
+      };
 
       if (!res.ok || !data.id) {
         setError(data.error ?? "El pago no se pudo procesar.");
@@ -179,12 +191,21 @@ export function CheckoutPanel({ plan, onClose }: Props) {
         return;
       }
       if (data.status && ["DECLINED", "VOIDED", "ERROR"].includes(data.status)) {
+        // `statusMessage` es el motivo real del banco cuando Wompi resuelve
+        // el rechazo de una vez, sin necesidad de sondear el estado. Se
+        // identifica en vez de mostrarlo crudo: ver lib/payment-errors.ts.
+        const clasificado = classifyDeclineReason(data.statusMessage);
+        setMensaje(`${clasificado.message} ${clasificado.hint ?? ""}`.trim());
         setFase("rechazado");
         return;
       }
       setTx(data.id);
-    } catch {
-      setError("Se cayó la conexión. Revisa tu internet y vuelve a intentar.");
+    } catch (fallo) {
+      if (fallo instanceof TypeError) {
+        setError("Se cayó la conexión. Revisa tu internet y vuelve a intentar.");
+      } else {
+        setError(fallo instanceof Error && fallo.message ? fallo.message : "Algo falló al procesar el pago.");
+      }
       setFase("form");
     }
   }

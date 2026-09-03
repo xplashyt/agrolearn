@@ -1,9 +1,25 @@
 import { NextResponse } from "next/server";
 import { parseReference } from "@/lib/orders";
+import type { PaymentErrorCode } from "@/lib/payment-errors";
 import { integritySignature } from "@/lib/wompi";
-import { createTransaction, getAcceptanceTokens, type PaymentMethodPayload } from "@/lib/wompi-api";
+import {
+  createTransaction,
+  getAcceptanceTokens,
+  PaymentGatewayError,
+  type PaymentMethodPayload,
+} from "@/lib/wompi-api";
 
 export const runtime = "nodejs";
+
+// Status HTTP por tipo de falla de la PASARELA (ver lib/payment-errors.ts).
+// Lo que no está listado cae en 502: falla del lado de Wompi, no de quien pide.
+const HTTP_STATUS_BY_CODE: Partial<Record<PaymentErrorCode, number>> = {
+  ACCESS_BLOCKED: 403,
+  TOO_MANY_ATTEMPTS: 429,
+  INVALID_CONFIGURATION: 500,
+  GATEWAY_UNAVAILABLE: 502,
+  NO_CONNECTION: 502,
+};
 
 const CURRENCY = "COP";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -90,11 +106,25 @@ export async function POST(request: Request) {
       id: result.transaction.id,
       status: result.transaction.status,
       reference: result.transaction.reference,
+      // Por si Wompi ya resolvió DECLINED/ERROR en esta misma respuesta: sin
+      // esto, el motivo real del banco se perdía cuando el rechazo era
+      // inmediato y no hacía falta ni empezar el sondeo de estado.
+      statusMessage: result.transaction.status_message ?? null,
     });
   } catch (error) {
+    if (error instanceof PaymentGatewayError) {
+      // Clasificado: sabemos si fue la red, un bloqueo de la pasarela (WAF/IP),
+      // rate limiting, configuración inválida, etc. Ver lib/payment-errors.ts.
+      console.error("El pago no se pudo iniciar", { code: error.code, message: error.message });
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: HTTP_STATUS_BY_CODE[error.code] ?? 502 },
+      );
+    }
+
     console.error("Error creando la transacción", error);
     return NextResponse.json(
-      { error: "No pudimos contactar la pasarela. Intenta de nuevo." },
+      { error: "No pudimos contactar la pasarela. Intenta de nuevo.", code: "UNKNOWN" satisfies PaymentErrorCode },
       { status: 502 },
     );
   }
