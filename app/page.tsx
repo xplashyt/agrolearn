@@ -35,7 +35,7 @@ const PREGUNTAS = [
   },
   {
     p: "¿Sirve donde yo vivo?",
-    r: "Los tres cursos traen las tablas de siembra para clima frío, templado y cálido. En Huerta todo el año hay además calendario mes a mes por piso térmico.",
+    r: "Todos los cursos traen las tablas de siembra para clima frío, templado y cálido. En Huerta todo el año hay además calendario mes a mes por piso térmico.",
   },
   {
     p: "¿Por cuánto tiempo tengo el acceso?",
@@ -68,7 +68,7 @@ export default function Page() {
         <section id="cursos" className="border-b border-tinta px-5 py-14 md:px-8 md:py-20">
           <div className="mx-auto max-w-surco">
             <Titulo
-              etiqueta="Tres sobres, tres tamaños"
+              etiqueta={`${PLANS.length} sobres para elegir`}
               titulo="Elige cuánta huerta quieres"
               nota="Mientras más grande el sobre, más cultivos y más semana cubierta. Todos son pago único."
             />

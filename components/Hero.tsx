@@ -86,7 +86,7 @@ export function Hero() {
 
               <div className="mt-5 flex items-end justify-between gap-4">
                 <p className="dato max-w-[9rem] text-costal/70">
-                  Lote {new Date().getFullYear()} · 3 niveles
+                  Lote {new Date().getFullYear()} · {PLANS.length} niveles
                 </p>
                 <div className="anim-sello border-2 border-maiz px-3 py-1.5 text-center text-maiz">
                   <p className="dato leading-none">Desde</p>
